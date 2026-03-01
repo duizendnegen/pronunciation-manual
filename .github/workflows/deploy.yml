@@ -22,14 +22,14 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Start preview server
-        run: bunx vite preview --port 5173 &
+      - name: Start static server
+        run: bunx serve dist/ -p 5173 &
 
       - name: Wait for server
         run: bunx wait-on http://localhost:5173
 
       - name: Run e2e tests
-        run: bun run test:e2e
+        run: BASE_URL=http://localhost:5173 npx playwright test --config e2e/playwright.config.ts
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
