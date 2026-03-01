@@ -9,7 +9,8 @@ function hash(str: string): number {
 }
 
 // [regex, replacement, hint description]
-const PHONETIC_RULES: Array<[RegExp, string, string]> = [
+export const PHONETIC_RULES: Array<[RegExp, string, string]> = [
+  // --- Existing ---
   [/ph/g, "f", "ph → f"],
   [/tion/g, "shun", "tion → shun"],
   [/ture/g, "chur", "ture → chur"],
@@ -20,39 +21,103 @@ const PHONETIC_RULES: Array<[RegExp, string, string]> = [
   [/ch/g, "sh", "ch → sh"],
   [/gh/g, "g", "gh → g"],
   [/wr/g, "r", "wr → r"],
+
+  // --- Vowel shifts (digraphs) ---
+  [/oo/g, "ew", "oo → ew"],
+  [/ou/g, "ow", "ou → ow"],
+  [/ai/g, "ay", "ai → ay"],
+  [/ea/g, "ee", "ea → ee"],
+  [/ow/g, "oh", "ow → oh"],
+  [/igh/g, "eye", "igh → eye"],
+  [/au/g, "aw", "au → aw"],
+  [/ew/g, "yoo", "ew → yoo"],
+
+  // --- Vowel shifts (single) ---
+  [/a/g, "ay", "a → ay"],
+  [/e/g, "ee", "e → ee"],
+  [/i/g, "eye", "i → eye"],
+  [/o/g, "oh", "o → oh"],
+  [/u/g, "oo", "u → oo"],
+
+  // --- Consonant softening ---
+  [/ce/g, "se", "ce → se"],
+  [/ci/g, "si", "ci → si"],
+  [/ge/g, "je", "ge → je"],
+  [/gi/g, "ji", "gi → ji"],
+  [/s(?!h)/g, "z", "s → z"],
+
+  // --- Consonant hardening ---
+  [/(?<!n)g(?!h)/g, "gh", "g → gh"],
+  [/j/g, "dj", "j → dj"],
+  [/v/g, "b", "v → b"],
+  [/f/g, "ph", "f → ph"],
+
+  // --- Digraph expansion ---
+  [/x/g, "ks", "x → ks"],
+  [/ng/g, "ngg", "ng → ngg"],
+  [/mb/g, "mm", "mb → mm"],
+
+  // --- Silent-letter reveal ---
+  [/kn/g, "ken", "kn → ken (silent k revealed)"],
+  [/gn/g, "gun", "gn → gun (silent g revealed)"],
+  [/mb/g, "mub", "mb → mub (silent b revealed)"],
+  [/ld/g, "lud", "ld → lud (dark l revealed)"],
+
+  // --- Double-letter collapse ---
+  [/ll/g, "l", "ll → l"],
+  [/ss/g, "s", "ss → s"],
+  [/ff/g, "f", "ff → f"],
+  [/tt/g, "t", "tt → t"],
+  [/rr/g, "r", "rr → r"],
+
+  // --- Schwa insertion ---
+  [/str/g, "stur", "str → stur (schwa inserted)"],
+  [/spr/g, "spur", "spr → spur (schwa inserted)"],
+  [/scr/g, "skur", "scr → skur (schwa inserted)"],
+  [/spl/g, "spul", "spl → spul (schwa inserted)"],
+  [/thr/g, "thur", "thr → thur (schwa inserted)"],
 ];
 
-function makePhoneticSwap(input: string): Variant {
+export function makePhoneticVariants(input: string): Variant[] {
   const lower = input.toLowerCase();
+  const variants: Variant[] = [];
+
   for (const [pattern, replacement, desc] of PHONETIC_RULES) {
+    pattern.lastIndex = 0;
     if (pattern.test(lower)) {
       pattern.lastIndex = 0;
-      return {
+      variants.push({
         text: lower.replace(pattern, replacement),
         style: "phonetic_swap",
         hint: `swapped '${desc}'`,
-      };
+      });
     }
+    pattern.lastIndex = 0;
   }
-  // Fallback: shift first vowel sound; if no vowels, insert a schwa
-  let text = lower;
-  let changed = false;
-  text = lower.replace(/[aeiou]+/, (m) => {
-    const map: Record<string, string> = { a: "ay", e: "ee", i: "eye", o: "oh", u: "oo" };
-    const replacement = map[m[0]] ?? m;
-    if (replacement !== m) { changed = true; }
-    return replacement;
-  });
-  if (!changed) {
-    // No vowels — insert a schwa after the first consonant
-    text = lower[0] + "uh" + lower.slice(1);
+
+  // Fallback: only fires when zero rules matched
+  if (variants.length === 0) {
+    let text = lower;
+    let changed = false;
+    text = lower.replace(/[aeiou]+/, (m) => {
+      const map: Record<string, string> = { a: "ay", e: "ee", i: "eye", o: "oh", u: "oo" };
+      const repl = map[m[0]] ?? m;
+      if (repl !== m) { changed = true; }
+      return repl;
+    });
+    if (!changed) {
+      text = lower[0] + "uh" + lower.slice(1);
+    }
+    variants.push({ text, style: "phonetic_swap", hint: "vowel sound shifted" });
   }
-  return { text, style: "phonetic_swap", hint: "vowel sound shifted" };
+
+  return variants;
 }
 
 type CreativeFn = (s: string) => string;
 
-const CREATIVE_TECHNIQUES: Array<[CreativeFn, string]> = [
+export const CREATIVE_TECHNIQUES: Array<[CreativeFn, string]> = [
+  // --- Existing ---
   [(s) => s + "-ington", "suffix '-ington' added for flair"],
   [(s) => s + "-y", "playful '-y' suffix added"],
   [(s) => s + "-oo", "whimsical '-oo' ending added"],
@@ -67,6 +132,39 @@ const CREATIVE_TECHNIQUES: Array<[CreativeFn, string]> = [
   [
     (s) => s.replace(/([aeiou])/gi, (m) => m.toUpperCase()),
     "vowels capitalised for comic stress",
+  ],
+
+  // --- New suffix / prefix ---
+  [(s) => "mc" + s, "'mc' prefix for instant silliness"],
+  [(s) => s + "-inski", "suffix '-inski' added"],
+  [(s) => s + "-ola", "suffix '-ola' added"],
+  [(s) => s + "-inator", "suffix '-inator' added"],
+  [(s) => s + "-eroo", "suffix '-eroo' added"],
+
+  // --- New structural ---
+  [
+    (s) => s.split("").reverse().join(""),
+    "word reversed",
+  ],
+  [
+    (s) => s.slice(0, 2) + "-" + s,
+    "first syllable stuttered",
+  ],
+  [
+    (s) => {
+      const mid = Math.floor(s.length / 2);
+      return s.slice(0, mid) + "-waka-" + s.slice(mid);
+    },
+    "'-waka-' inserted mid-word",
+  ],
+  [
+    (s) => {
+      if (/[aeiou]/i.test(s[0])) return s + "ay";
+      const vowelIdx = s.split("").findIndex((c) => /[aeiou]/i.test(c));
+      if (vowelIdx === -1) return s + "ay";
+      return s.slice(vowelIdx) + s.slice(0, vowelIdx) + "ay";
+    },
+    "pig latin",
   ],
 ];
 
@@ -91,8 +189,8 @@ function makeCreative(input: string, seed: number, combineTwo: boolean): Variant
 export async function generateVariants(input: string): Promise<Variant[]> {
   const h = hash(input);
 
-  // Build candidate pool: phonetic + all 6 creative (single technique each)
-  const pool: Variant[] = [makePhoneticSwap(input)];
+  // Build candidate pool: all matching phonetic rules + all creative techniques
+  const pool: Variant[] = [...makePhoneticVariants(input)];
   for (let i = 0; i < CREATIVE_TECHNIQUES.length; i++) {
     pool.push(makeCreative(input, h + i, false));
   }
@@ -116,7 +214,7 @@ export async function generateVariants(input: string): Promise<Variant[]> {
     }
   }
 
-  // Fallback: add combined-creative if needed
+  // Fallback: combined-creative if still < 3
   for (let i = 0; variants.length < 3; i++) {
     const v = makeCreative(input, h + 10 + i, true);
     if (!seen.has(v.text)) {
